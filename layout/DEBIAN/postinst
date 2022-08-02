@@ -1,0 +1,5 @@
+#!/bin/sh
+
+killall -9 MobileGestaltHelper 2> /dev/null
+
+exit 0
