@@ -24,13 +24,13 @@ By default, all processes can only message XPC services allowed by their sandbox
 
 The sandbox extensions are issued on demand inside the MobileGestaltHelper hook and then returned to the calling process, where libSandy consumes them.
 
-## Sandbox "Profiles" (implemented libSandy) explained
+## Sandbox "Profiles" (implemented in libSandy) explained
 
 In order to be secure, libSandy uses a specific profile format that's stored in a root owned path (`(/var/jb)/Library/libSandy/<Profile Name>.plist`). These profiles are pre defined and need to be included in a package, it is recommended to use the layout directory of theos in order to add it to your project.
 
-A sandbox profile mainly defines which extensions should be issued to the process wanting to apply it, the exact formalities and available options are detailed below.
+A libSandy profile mainly defines which extensions should be issued to the process wanting to apply it, the exact formalities and available options are detailed below.
 
-Secondly, a sandbox profile also contains a whitelist of process signing identifiers that can apply them. If you can't figure out how to get the signing identifier of your process, compile a debug build of libSandy and try consuming a profile the process doesn't have access to, the signing identifier should be logged to console.
+Secondly, a libSandy profile also contains a whitelist of process signing identifiers that can apply them. If you can't figure out how to get the signing identifier of your process, compile a debug build of libSandy and try consuming a profile the process doesn't have access to, the signing identifier should be logged to console.
 
 Thirdly and least importantly, it is also possible to define conditions under which a libSandy profile may be applied. The only condition currently implemented is file existance, meaning that the profile can only be applied when a certain file (does not (when negated is true)) exist on the file system. I mainly implemented this functionalitly in order to give Safari Plus users an option to use it sandboxed without any security concerns.
 
