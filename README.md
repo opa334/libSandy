@@ -12,11 +12,11 @@ In order for an extension to have any effect, it needs to be defined in the seat
 
 Sandbox extensions are available in the kernel and there is multiple syscalls, libsystem_sandbox.dylib provides the userspace API, but Apple unfortunately only implemented the functions they specifically need.
 
-By default every process running on iOS has a sandbox profile associated to it, additional extensions can also given through entitlements.
+By default, every process running on iOS has a sandbox profile associated to it, additional extensions can also given through entitlements.
 
 Unfortunately there is no documentation whatsoever of sandbox extensions, so take all of the above information with a grain of salt.
 
-The problem is that when hooking system processes entitlements aren't an option as you cannot change them on existing processes. So when you want to hook an existing process (instead of creating a new binary entirely), the only way to get sandbox extensions is to retrieve them from another process and them consume them, this is what libSandy internally does.
+The problem is that when hooking system processes, entitlements aren't an option as you cannot change them on existing processes. So when you want to hook an existing process (instead of creating a new binary entirely), the only way to get sandbox extensions is to retrieve them from another process and them consume them, this is what libSandy internally does.
 
 ## How libSandy uses sandbox extensions
 
