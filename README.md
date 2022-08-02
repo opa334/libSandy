@@ -16,7 +16,7 @@ By default, every process running on iOS has a sandbox profile associated to it,
 
 Unfortunately there is no documentation whatsoever of sandbox extensions, so take all of the above information with a grain of salt.
 
-The problem is that when hooking system processes, entitlements aren't an option as you cannot change them on existing processes. So when you want to hook an existing process (instead of creating a new binary entirely), the only way to get sandbox extensions is to retrieve them from another process and them consume them, this is what libSandy internally does.
+The problem is that when hooking system processes, entitlements aren't an option as you cannot change them on existing processes. So when you want to hook an existing process (instead of creating a new binary entirely), the only way to get sandbox extensions is to retrieve them from another process and then consume them, this is what libSandy internally does.
 
 ## How libSandy uses sandbox extensions
 
