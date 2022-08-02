@@ -100,5 +100,7 @@ It may also be possible to give yourself the `com.apple.security.exception.share
 ### Examples
 
 [Profile example (Safari Plus)](https://github.com/opa334/SafariPlus/tree/master/layout/Library/libSandy/SafariPlus_FileAccess.plist)
+
 [Apply example (Safari Plus)](https://github.com/opa334/SafariPlus/blob/master/MobileSafari/Classes/SPFileManager.mm#L118)
+
 [NSUserDefaults example (Safari Plus)](https://github.com/opa334/SafariPlus/blob/master/MobileSafari/Classes/SPPreferenceManager.mm#L279)
