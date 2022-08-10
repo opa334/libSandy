@@ -1,3 +1,5 @@
+#import <stdbool.h>
+
 #if defined(__cplusplus)
 extern "C" {
 #endif

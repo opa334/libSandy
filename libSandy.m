@@ -5,8 +5,28 @@
 #import "HBLogWeak.h"
 #import "libSandy.h"
 
+extern char*** _NSGetArgv();
+static NSString* safe_getExecutablePath()
+{
+	char* executablePathC = **_NSGetArgv();
+	return [NSString stringWithUTF8String:executablePathC];
+}
+
+// calling libSandy functions from inside MobileGestaltHelper itself locks the system up so we need to prevent it
+static BOOL isRunningInsideMobileGestaltHelper()
+{
+	static BOOL isMgh;
+	static dispatch_once_t onceToken;
+	dispatch_once (&onceToken, ^{
+		isMgh = [safe_getExecutablePath().lastPathComponent isEqualToString:@"MobileGestaltHelper"];
+	});
+	return isMgh;
+}
+
 int libSandy_applyProfile(const char* profileName)
 {
+	if(isRunningInsideMobileGestaltHelper()) return 0;
+
 	__block int retcode = kLibSandyErrorXPCFailure;
 
 	HBLogDebugWeak(@"[libSandy libSandy_applyProfile] attempting to apply profile %s", profileName);
@@ -54,6 +74,8 @@ int libSandy_applyProfile(const char* profileName)
 
 bool libSandy_works()
 {
+	if(isRunningInsideMobileGestaltHelper()) return YES;
+
 	xpc_connection_t mgConnection = xpc_connection_create_mach_service("com.apple.mobilegestalt.xpc", 0, XPC_CONNECTION_MACH_SERVICE_PRIVILEGED);
 	xpc_connection_set_event_handler(mgConnection, ^(xpc_object_t object){});
 	xpc_connection_resume(mgConnection);
