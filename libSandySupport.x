@@ -7,6 +7,7 @@
 #import <dlfcn.h>
 #import "HBLogWeak.h"
 #import "rootless.h"
+#include <sys/stat.h>
 
 BOOL evaluateCondition(NSDictionary* condition)
 {
@@ -98,14 +99,11 @@ xpc_object_t getProcessExtensions(xpc_connection_t sourceConnection, const char*
 		return extensionArray;
 	}
 
-	NSDictionary* profileAttributes = [[NSFileManager defaultManager] attributesOfItemAtPath:profilePath error:nil];
-	if(!profileAttributes)
+	struct stat info;
+	stat(profilePath.fileSystemRepresentation, &info);
+	if(info.st_uid != 0 || info.st_gid != 0)
 	{
-		return extensionArray;
-	}
-
-	if(![[profileAttributes fileOwnerAccountName] isEqualToString:@"root"] || ![[profileAttributes fileGroupOwnerAccountName] isEqualToString:@"wheel"])
-	{
+		// nice try² ;-)
 		return extensionArray;
 	}
 
