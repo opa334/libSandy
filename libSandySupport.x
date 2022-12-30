@@ -6,41 +6,7 @@
 #import "substrate.h"
 #import <dlfcn.h>
 #import "HBLogWeak.h"
-
-NSString* getRootPath(void)
-{
-	static NSString* rootPath = nil;
-
-	static dispatch_once_t onceToken;
-	dispatch_once(&onceToken, ^
-	{
-		NSFileManager* fileManager = [NSFileManager defaultManager];
-		NSDictionary* attributes = [fileManager attributesOfItemAtPath:@"/var/jb" error:nil];
-		if(attributes)
-		{
-			NSString* fileType = attributes[NSFileType];
-			if([fileType isEqualToString:NSFileTypeSymbolicLink])
-			{
-				NSString* destination = [fileManager destinationOfSymbolicLinkAtPath:@"/var/jb" error:nil];
-				if(![destination isEqualToString:@"/jb"] && ![destination isEqualToString:@"/jb/"])
-				{
-					rootPath = destination;
-				}
-			}
-		}
-		if(!rootPath)
-		{
-			rootPath = @"/";
-		}
-	});
-
-	return rootPath;
-}
-
-NSString* rootifyPath(NSString* path)
-{
-	return [getRootPath() stringByAppendingPathComponent:path];
-}
+#import "rootless.h"
 
 BOOL evaluateCondition(NSDictionary* condition)
 {
@@ -123,12 +89,23 @@ xpc_object_t getProcessExtensions(xpc_connection_t sourceConnection, const char*
 	HBLogDebugWeak(@"[libSandySupport getProcessExtensions] sourceIdentifier=%@ profileName=%@", sourceIdentifier, nsProfileName);
 
 	__block xpc_object_t extensionArray = xpc_array_create(NULL, 0);
-	NSString* profileRootPath = rootifyPath(@"/Library/libSandy");
+	NSString* profileRootPath = ROOT_PATH_NS(@"/Library/libSandy");
 	NSString* profilePath = [profileRootPath stringByAppendingPathComponent:[nsProfileName stringByAppendingPathExtension:@"plist"]].stringByStandardizingPath;
 
 	if(![profilePath hasPrefix:profileRootPath])
 	{
 		// nice try ;-)
+		return extensionArray;
+	}
+
+	NSDictionary* profileAttributes = [[NSFileManager defaultManager] attributesOfItemAtPath:profilePath error:nil];
+	if(!profileAttributes)
+	{
+		return extensionArray;
+	}
+
+	if(![[profileAttributes fileOwnerAccountName] isEqualToString:@"root"] || ![[profileAttributes fileGroupOwnerAccountName] isEqualToString:@"wheel"])
+	{
 		return extensionArray;
 	}
 
