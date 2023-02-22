@@ -5,6 +5,8 @@
 #import "HBLogWeak.h"
 #import "libSandy.h"
 
+#define LIBSANDY_XPC_TIMEOUT 0.1 * NSEC_PER_SEC
+
 extern char*** _NSGetArgv();
 static NSString* safe_getExecutablePath()
 {
@@ -27,8 +29,6 @@ int libSandy_applyProfile(const char* profileName)
 {
 	if(isRunningInsideMobileGestaltHelper()) return 0;
 
-	__block int retcode = kLibSandyErrorXPCFailure;
-
 	HBLogDebugWeak(@"[libSandy libSandy_applyProfile] attempting to apply profile %s", profileName);
 
 	xpc_connection_t mgConnection = xpc_connection_create_mach_service("com.apple.mobilegestalt.xpc", 0, XPC_CONNECTION_MACH_SERVICE_PRIVILEGED);
@@ -38,38 +38,46 @@ int libSandy_applyProfile(const char* profileName)
 	xpc_object_t getExtensionsMessage = xpc_dictionary_create(NULL,NULL,0);
 	xpc_dictionary_set_bool(getExtensionsMessage, "libSandy_isProfileMessage", YES);
 	xpc_dictionary_set_string(getExtensionsMessage, "profile", profileName);
-	
-	xpc_object_t reply = xpc_connection_send_message_with_reply_sync(mgConnection, getExtensionsMessage);
-	if(reply)
-	{
-		xpc_type_t replyType = xpc_get_type(reply);
-		HBLogDebugWeak(@"[libSandy libSandy_applyProfile] got reply %s", xpc_copy_description(reply));
-		if(replyType == XPC_TYPE_DICTIONARY)
+
+	__block int returnCode = kLibSandyErrorXPCFailure;
+	dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
+
+	xpc_connection_send_message_with_reply(mgConnection, getExtensionsMessage, dispatch_get_main_queue(), ^(xpc_object_t reply) {
+		if(reply)
 		{
-			xpc_object_t extensions = xpc_dictionary_get_value(reply, "extensions");
-			xpc_type_t extensionsType = xpc_get_type(extensions);
-			if(extensionsType == XPC_TYPE_ARRAY)
+			xpc_type_t replyType = xpc_get_type(reply);
+			HBLogDebugWeak(@"[libSandy libSandy_applyProfile] got reply %s", xpc_copy_description(reply));
+			if(replyType == XPC_TYPE_DICTIONARY)
 			{
-				HBLogDebugWeak(@"[libSandy libSandy_applyProfile] got extensions %s", xpc_copy_description(extensions));
-				retcode = kLibSandyErrorRestricted;
-				xpc_array_apply(extensions, ^bool(size_t index, xpc_object_t value)
+				xpc_object_t extensions = xpc_dictionary_get_value(reply, "extensions");
+				xpc_type_t extensionsType = xpc_get_type(extensions);
+				if(extensionsType == XPC_TYPE_ARRAY)
 				{
-					if(xpc_get_type(value) == XPC_TYPE_STRING)
+					HBLogDebugWeak(@"[libSandy libSandy_applyProfile] got extensions %s", xpc_copy_description(extensions));
+					returnCode = kLibSandyErrorRestricted;
+					xpc_array_apply(extensions, ^bool(size_t index, xpc_object_t value)
 					{
-						retcode = kLibSandySuccess; // if returned extensions has one or more tokens: SUCCESS
-						const char* ext = xpc_string_get_string_ptr(value);
-						__unused int64_t suc = sandbox_extension_consume(ext);
-						HBLogDebugWeak(@"[libSandy libSandy_applyProfile] Consumed extension (%s) -> %lld", ext, suc);
-					}
-					return true;
-				});
+						if(xpc_get_type(value) == XPC_TYPE_STRING)
+						{
+							returnCode = kLibSandySuccess; // if returned extensions has one or more tokens: SUCCESS
+							const char* ext = xpc_string_get_string_ptr(value);
+							__unused int64_t suc = sandbox_extension_consume(ext);
+							HBLogDebugWeak(@"[libSandy libSandy_applyProfile] Consumed extension (%s) -> %lld", ext, suc);
+						}
+						return true;
+					});
+				}
 			}
 		}
-	}
 
-	HBLogDebugWeak(@"[libSandy libSandy_applyProfile] applied profile %s => %d", profileName, retcode);
+		dispatch_semaphore_signal(semaphore);
+	});
 
-	return retcode;
+	dispatch_semaphore_wait(semaphore, dispatch_time(DISPATCH_TIME_NOW, LIBSANDY_XPC_TIMEOUT));
+	
+	HBLogDebugWeak(@"[libSandy libSandy_applyProfile] applied profile %s => %d", profileName, returnCode);
+
+	return returnCode;
 }
 
 bool libSandy_works()
@@ -82,15 +90,21 @@ bool libSandy_works()
 
 	xpc_object_t testMessage = xpc_dictionary_create(NULL,NULL,0);
 	xpc_dictionary_set_bool(testMessage, "libSandy_isTestMessage", YES);
-	
-	xpc_object_t reply = xpc_connection_send_message_with_reply_sync(mgConnection, testMessage);
-	if(reply)
-	{
-		xpc_type_t replyType = xpc_get_type(reply);
-		if(replyType == XPC_TYPE_DICTIONARY)
+
+	__block bool returnCode = false;
+	dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
+
+	xpc_connection_send_message_with_reply(mgConnection, testMessage, dispatch_get_main_queue(), ^(xpc_object_t reply) {
+		if(reply)
 		{
-			return xpc_dictionary_get_bool(reply, "works");
+			xpc_type_t replyType = xpc_get_type(reply);
+			if(replyType == XPC_TYPE_DICTIONARY)
+			{
+				returnCode = xpc_dictionary_get_bool(reply, "works");
+			}
 		}
-	}
-	return false;
+	});
+	dispatch_semaphore_wait(semaphore, dispatch_time(DISPATCH_TIME_NOW, LIBSANDY_XPC_TIMEOUT));
+
+	return returnCode;
 }

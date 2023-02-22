@@ -1,7 +1,7 @@
 Package: com.opa334.libsandy
 Name: libSandy
 Depiction: https://moreinfo.thebigboss.org/moreinfo/depiction.php?file=libsandyDp
-Version: 1.0.3-2
+Version: 1.0.4
 Architecture: iphoneos-arm
 Description: Securely extend the sandbox of system processes and user applications
 Conflicts: ws.hbang.stopcrashingpls (<= 1.0.2)
