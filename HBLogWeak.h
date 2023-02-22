@@ -1,6 +1,6 @@
 #import <HBLog.h>
 #ifdef __DEBUG__
-	#define HBLogDebugWeak(args ...) HBLogDebug(args)
+#define HBLogDebugWeak(args ...) HBLogDebug(args)
 #else
-	#define HBLogDebugWeak(...)
+#define HBLogDebugWeak(...)
 #endif

@@ -18,48 +18,40 @@ char* (*__sandbox_extension_issue_mach_to_process)(const char *extension_class, 
 
 char* compat_sandbox_extension_issue_file_to_process(const char *extension_class, const char *path, uint32_t flags, audit_token_t audit_token)
 {
-	if(__sandbox_extension_issue_file_to_process)
-	{
+	if(__sandbox_extension_issue_file_to_process) {
 		return __sandbox_extension_issue_file_to_process(extension_class, path, flags, audit_token);
 	}
-	else
-	{
+	else {
 		return __sandbox_extension_issue_file(extension_class, path, flags);
 	}
 }
 
 char* compat_sandbox_extension_issue_generic_to_process(const char *extension_class, uint32_t flags, audit_token_t audit_token)
 {
-	if(__sandbox_extension_issue_generic_to_process)
-	{
+	if(__sandbox_extension_issue_generic_to_process) {
 		return __sandbox_extension_issue_generic_to_process(extension_class, flags, audit_token);
 	}
-	else
-	{
+	else {
 		return __sandbox_extension_issue_generic(extension_class, flags);
 	}
 }
 
 char* compat_sandbox_extension_issue_iokit_registry_entry_class_to_process(const char *extension_class, const char *registry_entry_class, uint32_t flags, audit_token_t audit_token)
 {
-	if(__sandbox_extension_issue_generic_to_process)
-	{
+	if(__sandbox_extension_issue_generic_to_process) {
 		return __sandbox_extension_issue_iokit_registry_entry_class_to_process(extension_class, registry_entry_class, flags, audit_token);
 	}
-	else
-	{
+	else {
 		return __sandbox_extension_issue_iokit_registry_entry_class(extension_class, registry_entry_class, flags);
 	}
 }
 
 char* compat_sandbox_extension_issue_mach_to_process(const char *extension_class, const char *name, uint32_t flags, audit_token_t audit_token)
 {
-	if(__sandbox_extension_issue_mach_to_process)
-	{
+	if(__sandbox_extension_issue_mach_to_process) {
 		return __sandbox_extension_issue_mach_to_process(extension_class, name, flags, audit_token);
 	}
-	else
-	{
+	else {
 		return __sandbox_extension_issue_mach(extension_class, name, SANDBOX_EXTENSION_CANONICAL);
 	}
 }

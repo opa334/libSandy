@@ -8,7 +8,7 @@ extern "C" {
 #define kLibSandyErrorXPCFailure 1
 #define kLibSandyErrorRestricted 2
 
-extern int libSandy_applyProfile(const char* profileName);
+extern int libSandy_applyProfile(const char *profileName);
 extern bool libSandy_works(void);
 
 #if defined(__cplusplus)
