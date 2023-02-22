@@ -5,7 +5,7 @@
 #import "HBLogWeak.h"
 #import "libSandy.h"
 
-#define LIBSANDY_XPC_TIMEOUT 0.1 * NSEC_PER_SEC
+#define LIBSANDY_XPC_TIMEOUT 0.25 * NSEC_PER_SEC
 
 extern char*** _NSGetArgv();
 static NSString* safe_getExecutablePath()
@@ -25,9 +25,12 @@ static BOOL isRunningInsideMobileGestaltHelper()
 	return isMgh;
 }
 
-int libSandy_applyProfile(const char* profileName)
+void libSandy_applyProfileWithCallback(const char *profileName, void (^callback)(int code))
 {
-	if(isRunningInsideMobileGestaltHelper()) return 0;
+	if(isRunningInsideMobileGestaltHelper()) {
+		if (callback) callback(0);
+		return;
+	}
 
 	HBLogDebugWeak(@"[libSandy libSandy_applyProfile] attempting to apply profile %s", profileName);
 
@@ -40,9 +43,7 @@ int libSandy_applyProfile(const char* profileName)
 	xpc_dictionary_set_string(getExtensionsMessage, "profile", profileName);
 
 	__block int returnCode = kLibSandyErrorXPCFailure;
-	dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
-
-	xpc_connection_send_message_with_reply(mgConnection, getExtensionsMessage, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^(xpc_object_t reply) {
+	xpc_connection_send_message_with_reply(mgConnection, getExtensionsMessage, dispatch_get_main_queue(), ^(xpc_object_t reply) {
 		if(reply)
 		{
 			xpc_type_t replyType = xpc_get_type(reply);
@@ -73,11 +74,18 @@ int libSandy_applyProfile(const char* profileName)
 		dispatch_semaphore_signal(semaphore);
 	});
 
-	dispatch_semaphore_wait(semaphore, dispatch_time(DISPATCH_TIME_NOW, LIBSANDY_XPC_TIMEOUT));
-	
 	HBLogDebugWeak(@"[libSandy libSandy_applyProfile] applied profile %s => %d", profileName, returnCode);
 
 	return returnCode;
+}
+
+int libSandy_applyProfile(const char* profileName)
+{
+	dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
+
+
+
+	dispatch_semaphore_wait(semaphore, dispatch_time(DISPATCH_TIME_NOW, LIBSANDY_XPC_TIMEOUT));
 }
 
 bool libSandy_works()
@@ -94,7 +102,7 @@ bool libSandy_works()
 	__block bool returnCode = false;
 	dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
 
-	xpc_connection_send_message_with_reply(mgConnection, testMessage, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^(xpc_object_t reply) {
+	xpc_connection_send_message_with_reply(mgConnection, testMessage, dispatch_get_main_queue(), ^(xpc_object_t reply) {
 		if(reply)
 		{
 			xpc_type_t replyType = xpc_get_type(reply);
