@@ -7,7 +7,7 @@ LIBRARY_NAME = libsandy
 
 libsandy_FILES = libSandy.m
 libsandy_CFLAGS = -fobjc-arc
-libsandy_INSTALL_PATH = /usr/lib
+libsandy_INSTALL_PATH = @rpath
 libsandy_PUBLIC_HEADERS = libSandy.h
 
 TWEAK_NAME = libSandySupport
