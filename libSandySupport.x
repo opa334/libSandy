@@ -6,7 +6,7 @@
 #import "substrate.h"
 #import <dlfcn.h>
 #import "HBLogWeak.h"
-#import "rootless.h"
+#import <rootless.h>
 #include <sys/stat.h>
 
 BOOL evaluateCondition(NSDictionary *condition)

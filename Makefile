@@ -1,5 +1,10 @@
 TARGET := iphone:clang:13.7:8.0
+
+ifdef ROOTLESS
+export ARCHS = arm64 arm64e
+else
 export ARCHS = armv7 armv7s arm64 arm64e
+endif
 
 include $(THEOS)/makefiles/common.mk
 
