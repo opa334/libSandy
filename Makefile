@@ -1,9 +1,7 @@
-TARGET := iphone:clang:13.7:8.0
-
-ifdef ROOTLESS
-export ARCHS = arm64 arm64e
+ifeq ($(THEOS_PACKAGE_SCHEME),rootless)
+TARGET := iphone:clang:16.2:15.0
 else
-export ARCHS = armv7 armv7s arm64 arm64e
+TARGET := iphone:clang:14.5:8.0
 endif
 
 include $(THEOS)/makefiles/common.mk
@@ -12,6 +10,9 @@ LIBRARY_NAME = libsandy
 
 libsandy_FILES = libSandy.m
 libsandy_CFLAGS = -fobjc-arc
+ifeq ($(THEOS_PACKAGE_SCHEME),rootless)
+libsandy_LDFLAGS += -install_name @rpath/libsandy.dylib
+endif
 libsandy_INSTALL_PATH = /usr/lib
 libsandy_PUBLIC_HEADERS = libSandy.h
 
