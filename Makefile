@@ -1,3 +1,5 @@
+XINA_SUPPORT ?= 0
+
 ifeq ($(THEOS_PACKAGE_SCHEME),rootless)
 TARGET := iphone:clang:16.2:15.0
 else
@@ -20,6 +22,9 @@ TWEAK_NAME = libSandySupport
 
 libSandySupport_FILES = libSandySupport.x sandbox_compat.m
 libSandySupport_CFLAGS = -fobjc-arc
+ifeq ($(XINA_SUPPORT),1)
+libSandySupport_CFLAGS += -D XINA_SUPPORT=1
+endif
 
 include $(THEOS_MAKE_PATH)/library.mk
 include $(THEOS_MAKE_PATH)/tweak.mk

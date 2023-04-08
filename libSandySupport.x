@@ -9,8 +9,7 @@
 #import <rootless.h>
 #include <sys/stat.h>
 
-#ifndef THEOS_PACKAGE_INSTALL_PREFIX
-#define XINA_SUPPORT 1
+#ifdef XINA_SUPPORT
 NSString *xinaHackFix(NSString *path)
 {
 	if ([[NSFileManager defaultManager] fileExistsAtPath:@"/var/LIY"]) {
