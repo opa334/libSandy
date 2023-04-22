@@ -9,16 +9,6 @@
 #import <rootless.h>
 #include <sys/stat.h>
 
-#ifdef XINA_SUPPORT
-NSString *xinaHackFix(NSString *path)
-{
-	if ([[NSFileManager defaultManager] fileExistsAtPath:@"/var/LIY"]) {
-		return [@"/var/jb" stringByAppendingString:path];
-	}
-	return path;
-}
-#endif
-
 BOOL evaluateCondition(NSDictionary *condition)
 {
 	BOOL result = NO;
@@ -90,11 +80,7 @@ xpc_object_t getProcessExtensions(xpc_connection_t sourceConnection, const char 
 	HBLogDebugWeak(@"[libSandySupport getProcessExtensions] sourceIdentifier=%@ profileName=%@", sourceIdentifier, nsProfileName);
 
 	__block xpc_object_t extensionArray = xpc_array_create(NULL, 0);
-#ifdef XINA_SUPPORT
-	NSString *profileRootPath = xinaHackFix(ROOT_PATH_NS(@"/Library/libSandy"));
-#else
 	NSString *profileRootPath = ROOT_PATH_NS(@"/Library/libSandy");
-#endif
 	NSString *profilePath = [profileRootPath stringByAppendingPathComponent:[nsProfileName stringByAppendingPathExtension:@"plist"]].stringByStandardizingPath;
 
 	if (![profilePath hasPrefix:profileRootPath]) {
