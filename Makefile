@@ -9,20 +9,16 @@ include $(THEOS)/makefiles/common.mk
 LIBRARY_NAME = libsandy
 
 libsandy_FILES = libSandy.m
-libsandy_CFLAGS = -fobjc-arc
+libsandy_CFLAGS = -fobjc-arc -Iheaders
 ifeq ($(THEOS_PACKAGE_SCHEME),rootless)
 libsandy_LDFLAGS += -install_name @rpath/libsandy.dylib
+else
+libsandy_CFLAGS += -D XINA_SUPPORT=1
 endif
 libsandy_INSTALL_PATH = /usr/lib
 libsandy_PUBLIC_HEADERS = libSandy.h
 
-TWEAK_NAME = libSandySupport
-
-libSandySupport_FILES = libSandySupport.x sandbox_compat.m
-libSandySupport_CFLAGS = -fobjc-arc
-ifneq ($(THEOS_PACKAGE_SCHEME),rootless)
-libSandySupport_CFLAGS += -D XINA_SUPPORT=1
-endif
-
 include $(THEOS_MAKE_PATH)/library.mk
 include $(THEOS_MAKE_PATH)/tweak.mk
+SUBPROJECTS += sandyd
+include $(THEOS_MAKE_PATH)/aggregate.mk

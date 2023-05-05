@@ -20,9 +20,9 @@ The problem is that when hooking system processes, entitlements aren't an option
 
 ## How libSandy uses sandbox extensions
 
-By default, all processes can only message XPC services allowed by their sandbox, libSandy hooks MobileGestaltHelper because it is unsanboxed and can be accessed by all other processes.
+By default, all processes can only message XPC services allowed by their sandbox, libSandy writes a per-boot sandbox extension to contact sandyd to a path accessible system wide. This allows any process on the system to consume it to then be able to send messages to it.
 
-The sandbox extensions are issued on demand inside the MobileGestaltHelper hook and then returned to the calling process, where libSandy consumes them.
+The actual sandbox extensions provided by libSandy plists are issued on demand inside sandyd and then returned to the calling process, where the libSandy libary itself consumes them.
 
 ## Sandbox "Profiles" (implemented in libSandy) explained
 

@@ -1,5 +1,26 @@
 #!/bin/sh
 
-killall -9 MobileGestaltHelper 2> /dev/null
+ROOT_PREFIX=""
+ARCH=$(dpkg --print-architecture)
+if [ "$ARCH" = "iphoneos-arm" ]; then
+   if [ -L "/var/jb" ]; then
+      # get symlink target
+      # xina support
+      destination=$(readlink -f /var/jb)
+      if [ "$destination" != "/jb" ]; then
+         ROOT_PREFIX="$destination"
+      fi
+   fi
+else
+   ROOT_PREFIX="/var/jb"
+fi
+
+chown root:wheel $ROOT_PREFIX/Library/LaunchDaemons/com.opa334.sandyd.plist
+chmod 644 $ROOT_PREFIX/Library/LaunchDaemons/com.opa334.sandyd.plist
+
+chown root:wheel $ROOT_PREFIX/usr/local/libexec/sandyd
+chmod 755 $ROOT_PREFIX/usr/local/libexec/sandyd
+
+launchctl load $ROOT_PREFIX/Library/LaunchDaemons/com.opa334.sandyd.plist 2> /dev/null
 
 exit 0

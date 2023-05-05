@@ -1,13 +1,32 @@
 #import <CoreFoundation/CoreFoundation.h>
 #import <Foundation/Foundation.h>
-#import "Security.h"
-
+#import <Security.h>
+#import <sys/stat.h>
+#import <xpc/xpc.h>
+#import <dlfcn.h>
+#import <HBLogWeak.h>
+#import <rootless.h>
+#import <sandbox_private.h>
+#import <sandyd.h>
 #import "sandbox_compat.h"
 #import "substrate.h"
-#import <dlfcn.h>
-#import "HBLogWeak.h"
-#import <rootless.h>
-#include <sys/stat.h>
+
+void createExtensionPlist(void)
+{
+	NSString *targetPath = ROOT_PATH_NS(@"/usr/lib/sandyd_global.plist");
+	NSMutableArray *extensions = [NSMutableArray new];
+
+	char *extension = NULL;
+	extension = sandbox_extension_issue_mach("com.apple.app-sandbox.mach", "com.opa334.sandyd", 0);
+	if (extension) [extensions addObject:[NSString stringWithUTF8String:extension]];
+	extension = sandbox_extension_issue_mach("com.apple.security.exception.mach-lookup.global-name", "com.opa334.sandyd", 0);
+	if (extension) [extensions addObject:[NSString stringWithUTF8String:extension]];
+
+	HBLogDebugWeak(@"generated extensions: %@", extensions);
+
+	NSDictionary *dictToSave = @{ @"extensions" : extensions };
+	[dictToSave writeToFile:targetPath atomically:NO];
+}
 
 BOOL evaluateCondition(NSDictionary *condition)
 {
@@ -161,52 +180,55 @@ xpc_object_t getProcessExtensions(xpc_connection_t sourceConnection, const char 
 	return extensionArray;
 }
 
-void (*__xpc_connection_set_event_handler)(xpc_connection_t connection, xpc_handler_t handler);
-void _xpc_connection_set_event_handler(xpc_connection_t connection, xpc_handler_t handler)
-{
-	const char *description = xpc_copy_description(connection);
-	if (description) {
-		HBLogDebugWeak(@"[libSandySupport _xpc_connection_set_event_handler] description: %s", description);
-		if (strstr(description, " name = com.apple.mobilegestalt.xpc")) {
-			xpc_handler_t newHandler = ^(xpc_object_t message) {
-				if (xpc_get_type(message) == XPC_TYPE_DICTIONARY) {
-					xpc_connection_t remoteConnection = xpc_dictionary_get_remote_connection(message);
-
-					bool libSandy_isTestMessage = xpc_dictionary_get_bool(message, "libSandy_isTestMessage");
-					if (libSandy_isTestMessage) {
-						xpc_object_t reply = xpc_dictionary_create_reply(message);
-						xpc_dictionary_set_bool(reply, "works", true);
-						xpc_connection_send_message(remoteConnection, reply);
-						return;
-					}
-					bool libSandy_isProfileMessage = xpc_dictionary_get_bool(message, "libSandy_isProfileMessage");
-					if (libSandy_isProfileMessage) {
-						const char *profileName = xpc_dictionary_get_string(message, "profile");
-						xpc_object_t extensions = getProcessExtensions(remoteConnection, profileName);
-						xpc_object_t reply = xpc_dictionary_create_reply(message);
-						xpc_dictionary_set_value(reply, "extensions", extensions);
-						xpc_connection_send_message(remoteConnection, reply);
-						return;
-					}
-				}
-
-				return handler(message);
-			};
-
-			HBLogDebugWeak(@"[libSandySupport _xpc_connection_set_event_handler] overwrote event handler");
-			__xpc_connection_set_event_handler(connection, newHandler);
-			return;
+int main(int argc, char *argv[], char *envp[]) {
+	@autoreleasepool {
+		// Attempt to create the server, exit if fails
+		xpc_connection_t service = xpc_connection_create_mach_service("com.opa334.sandyd", NULL, XPC_CONNECTION_MACH_SERVICE_LISTENER);
+		if (!service) {
+			HBLogDebugWeak(@"Failed to create XPC server. Exiting.");
+			return 0;
 		}
+
+		initSandboxCompatibilityLayer();
+		createExtensionPlist();
+
+		// Configure event handler
+		xpc_connection_set_event_handler(service, ^(xpc_object_t connection) {
+			xpc_type_t type = xpc_get_type(connection);
+			if (type == XPC_TYPE_CONNECTION) {
+				xpc_connection_set_event_handler(connection, ^(xpc_object_t message) {
+					if (xpc_get_type(message) == XPC_TYPE_DICTIONARY) {
+						SANDYD_MESSAGE_ID messageId = xpc_dictionary_get_int64(message, "id");
+						switch (messageId) {
+							case SANDYD_MESSAGE_TEST_CONNECTION: {
+								xpc_object_t reply = xpc_dictionary_create_reply(message);
+								xpc_dictionary_set_bool(reply, "works", true);
+								xpc_connection_send_message(connection, reply);
+								break;
+							}
+							case SANDYD_MESSAGE_GET_PROFILE_EXTENSIONS: {
+								const char *profileName = xpc_dictionary_get_string(message, "profile");
+								xpc_object_t extensions = getProcessExtensions(connection, profileName);
+								xpc_object_t reply = xpc_dictionary_create_reply(message);
+								xpc_dictionary_set_value(reply, "extensions", extensions);
+								xpc_connection_send_message(connection, reply);
+								break;
+							}
+						}
+					}
+				});
+				xpc_connection_resume(connection);
+			} else if (type == XPC_TYPE_ERROR) {
+				HBLogDebugWeak(@"XPC server error: %s", xpc_dictionary_get_string(connection, XPC_ERROR_KEY_DESCRIPTION));
+			}
+		});
+
+		// Make connection live
+		xpc_connection_resume(service);
+
+		// Execute run loop
+		[[NSRunLoop currentRunLoop] run];
+
+		return 0;
 	}
-
-	__xpc_connection_set_event_handler(connection, handler);
-}
-
-%ctor
-{
-	initSandboxCompatibilityLayer();
-	MSHookFunction((void*)&xpc_connection_set_event_handler, (void*)_xpc_connection_set_event_handler, (void**)&__xpc_connection_set_event_handler);
-
-	// When libSandy_works() initially returns false, it is possible to register for this event to know when libSandy starts working again
-	CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), CFSTR("com.opa334.libSandy/Loaded"), NULL, NULL, YES);
 }
