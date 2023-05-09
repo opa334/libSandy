@@ -7,7 +7,6 @@
 #import "HBLogWeak.h"
 #import "libSandy.h"
 
-#define LIBSANDY_XPC_TIMEOUT 0.1 * NSEC_PER_SEC
 static bool sandydCommunicationWorkedOnce = NO;
 
 extern char ***_NSGetArgv();
@@ -52,18 +51,9 @@ static xpc_object_t sandydSendMessage(xpc_object_t message)
 	xpc_connection_set_event_handler(connection, ^(xpc_object_t object){});
 	xpc_connection_resume(connection);
 
-	dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
-	__block xpc_connection_t replyToReturn = nil;
-	xpc_connection_send_message_with_reply(connection, message, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^(xpc_object_t reply) {
-		if (reply) {
-			replyToReturn = reply;
-		}
-		dispatch_semaphore_signal(semaphore);
-	});
-	dispatch_semaphore_wait(semaphore, dispatch_time(DISPATCH_TIME_NOW, LIBSANDY_XPC_TIMEOUT));
-
-	if (replyToReturn) sandydCommunicationWorkedOnce = YES;
-	return replyToReturn;
+	xpc_connection_t reply = xpc_connection_send_message_with_reply_sync(connection, message);
+	if (reply) sandydCommunicationWorkedOnce = YES;
+	return reply;
 }
 
 int libSandy_applyProfile(const char *profileName)
