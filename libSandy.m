@@ -7,8 +7,6 @@
 #import "HBLogWeak.h"
 #import "libSandy.h"
 
-static bool sandydCommunicationWorkedOnce = NO;
-
 extern char ***_NSGetArgv();
 static NSString *safe_getExecutablePath()
 {
@@ -27,17 +25,30 @@ static BOOL isRunningInsideSandyd()
 	return isSandyd;
 }
 
+static BOOL sandydCommunicationWorks(void)
+{
+	return sandbox_check(getpid(), "mach-lookup", SANDBOX_FILTER_GLOBAL_NAME | SANDBOX_CHECK_NO_REPORT, "com.opa334.sandyd") == 0;
+}
+
 static BOOL consumeGlobalExtensions(void)
 {
-	if (!sandydCommunicationWorkedOnce) {
+	if (!sandydCommunicationWorks()) {
 		NSString *plistPath = ROOT_PATH_NS(@"/usr/lib/sandyd_global.plist");
-		if (![[NSFileManager defaultManager] fileExistsAtPath:plistPath]) return NO;
+		if (![[NSFileManager defaultManager] fileExistsAtPath:plistPath]) {
+			NSLog(@"[libSandy consumeGlobalExtensions] FATAL ERROR: /usr/lib/sandyd_global.plist does not exist");
+			return NO;
+		}
 		NSDictionary *plistDict = [NSDictionary dictionaryWithContentsOfFile:plistPath];
 		if (!plistDict) return NO;
 		NSArray *extensions = plistDict[@"extensions"];
 		if (!extensions) return NO;
 		for (NSString *extension in extensions) {
-			sandbox_extension_consume(extension.UTF8String);
+			__unused int cr = sandbox_extension_consume(extension.UTF8String);
+			HBLogDebugWeak(@"[libSandy consumeGlobalExtensions] sandbox_extension_consume(\"%s\") => %d", extension.UTF8String, cr);
+		}
+		if (!sandydCommunicationWorks()) {
+			NSLog(@"[libSandy consumeGlobalExtensions] FATAL ERROR: communication still does not work, even after consuming sandbox extensions");
+			return NO;
 		}
 	}
 	return YES;
@@ -51,9 +62,7 @@ static xpc_object_t sandydSendMessage(xpc_object_t message)
 	xpc_connection_set_event_handler(connection, ^(xpc_object_t object){});
 	xpc_connection_resume(connection);
 
-	xpc_connection_t reply = xpc_connection_send_message_with_reply_sync(connection, message);
-	if (reply) sandydCommunicationWorkedOnce = YES;
-	return reply;
+	return xpc_connection_send_message_with_reply_sync(connection, message);
 }
 
 int libSandy_applyProfile(const char *profileName)
