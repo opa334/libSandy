@@ -1,16 +1,18 @@
 #import <CoreFoundation/CoreFoundation.h>
 #import <Foundation/Foundation.h>
 #import <xpc/xpc.h>
+#import <mach-o/dyld.h>
 #import <sandbox_private.h>
 #import <rootless.h>
 #import <sandyd.h>
 #import "HBLogWeak.h"
 #import "libSandy.h"
 
-extern char ***_NSGetArgv();
-static NSString *safe_getExecutablePath()
+NSString *safe_getExecutablePath()
 {
-	char *executablePathC = **_NSGetArgv();
+	char executablePathC[PATH_MAX];
+	uint32_t executablePathCSize = sizeof(executablePathC);
+	_NSGetExecutablePath(&executablePathC[0], &executablePathCSize);
 	return [NSString stringWithUTF8String:executablePathC];
 }
 
