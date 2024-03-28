@@ -2,6 +2,7 @@ include $(THEOS)/makefiles/common.mk
 
 TOOL_NAME = sandyd
 
+sandyd_ARCHS = arm64
 sandyd_FILES = main.m sandbox_compat.m
 sandyd_CFLAGS = -fobjc-arc -I../headers
 ifneq ($(THEOS_PACKAGE_SCHEME),rootless)
