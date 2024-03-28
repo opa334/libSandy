@@ -5,7 +5,7 @@
 #import <xpc/xpc.h>
 #import <dlfcn.h>
 #import <HBLogWeak.h>
-#import <rootless.h>
+#import <libroot.h>
 #import <sandbox_private.h>
 #import <sandyd.h>
 #import "sandbox_compat.h"
@@ -13,7 +13,7 @@
 
 void createExtensionPlist(void)
 {
-	NSString *targetPath = ROOT_PATH_NS(@"/usr/lib/sandyd_global.plist");
+	NSString *targetPath = JBROOT_PATH_NSSTRING(@"/usr/lib/sandyd_global.plist");
 	NSMutableArray *extensions = [NSMutableArray new];
 
 	char *extension = NULL;
@@ -99,7 +99,7 @@ xpc_object_t getProcessExtensions(xpc_connection_t sourceConnection, const char 
 	HBLogDebugWeak(@"[libSandySupport getProcessExtensions] sourceIdentifier=%@ profileName=%@", sourceIdentifier, nsProfileName);
 
 	__block xpc_object_t extensionArray = xpc_array_create(NULL, 0);
-	NSString *profileRootPath = ROOT_PATH_NS(@"/Library/libSandy");
+	NSString *profileRootPath = JBROOT_PATH_NSSTRING(@"/Library/libSandy");
 	NSString *profilePath = [profileRootPath stringByAppendingPathComponent:[nsProfileName stringByAppendingPathExtension:@"plist"]].stringByStandardizingPath;
 
 	if (![profilePath hasPrefix:profileRootPath]) {
