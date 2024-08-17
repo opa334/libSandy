@@ -19,6 +19,5 @@ libsandy_INSTALL_PATH = /usr/lib
 libsandy_PUBLIC_HEADERS = libSandy.h
 
 include $(THEOS_MAKE_PATH)/library.mk
-include $(THEOS_MAKE_PATH)/tweak.mk
 SUBPROJECTS += sandyd
 include $(THEOS_MAKE_PATH)/aggregate.mk

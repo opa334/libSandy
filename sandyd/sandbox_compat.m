@@ -1,7 +1,6 @@
 #import "sandbox_compat.h"
 
 #import <dlfcn.h>
-#import <substrate.h>
 #import <Foundation/Foundation.h>
 
 char* (*__sandbox_extension_issue_file)(const char *extension_class, const char *path, uint32_t flags);

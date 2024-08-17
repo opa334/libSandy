@@ -4,7 +4,6 @@ Depiction: https://moreinfo.thebigboss.org/moreinfo/depiction.php?file=libsandyD
 Version: 1.1.4
 Architecture: iphoneos-arm
 Description: Securely extend the sandbox of system processes and user applications
-Conflicts: ws.hbang.stopcrashingpls (<= 1.0.2)
 Maintainer: opa334
 Author: opa334
 Section: System
