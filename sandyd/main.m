@@ -9,7 +9,6 @@
 #import <sandbox_private.h>
 #import <sandyd.h>
 #import "sandbox_compat.h"
-#import "substrate.h"
 
 void createExtensionPlist(void)
 {
