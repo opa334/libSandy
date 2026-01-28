@@ -91,8 +91,13 @@ xpc_object_t getProcessExtensions(xpc_connection_t sourceConnection, const char 
 	audit_token_t auditToken;
 	xpc_connection_get_audit_token(sourceConnection, &auditToken);
 	struct __SecTask *secTask = SecTaskCreateWithAuditToken(NULL, auditToken);
+	if (!secTask) {
+		HBLogDebugWeak(@"[libSandySupport getProcessExtensions] failed to create SecTask");
+		return xpc_array_create(NULL, 0);
+	}
 
 	NSString *sourceIdentifier = (__bridge_transfer NSString*)SecTaskCopySigningIdentifier(secTask, NULL);
+	CFRelease(secTask);
 	NSString *nsProfileName = [NSString stringWithUTF8String:profileName];
 
 	HBLogDebugWeak(@"[libSandySupport getProcessExtensions] sourceIdentifier=%@ profileName=%@", sourceIdentifier, nsProfileName);
