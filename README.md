@@ -10,7 +10,7 @@ A token is just a string. This string can be consumed by any other process in or
 
 In order for an extension to have any effect, it needs to be defined in the seatbelt profile of the process that consumes the token.
 
-Sandbox extensions are available in the kernel and there is multiple syscalls, libsystem_sandbox.dylib provides the userspace API, but Apple unfortunately only implemented the functions they specifically need.
+Sandbox extensions are available in the kernel and there are multiple syscalls, libsystem_sandbox.dylib provides the userspace API, but Apple unfortunately only implemented the functions they specifically need.
 
 By default, every process running on iOS has a sandbox profile associated to it, additional extensions can also given through entitlements.
 
@@ -32,7 +32,7 @@ A libSandy profile mainly defines which extensions should be issued to the proce
 
 Secondly, a libSandy profile also contains a whitelist of process signing identifiers that can apply them. If you can't figure out how to get the signing identifier of your process, compile a debug build of libSandy and try consuming a profile the process doesn't have access to, the signing identifier should be logged to console.
 
-Thirdly and least importantly, it is also possible to define conditions under which a libSandy profile may be applied. The only condition currently implemented is file existance, meaning that the profile can only be applied when a certain file (does not (when negated is true)) exist on the file system. I mainly implemented this functionalitly in order to give Safari Plus users an option to use it sandboxed without any security concerns.
+Thirdly and least importantly, it is also possible to define conditions under which a libSandy profile may be applied. The only condition currently implemented is file existance, meaning that the profile can only be applied when a certain file does (not (when negated is true)) exist on the file system. I mainly implemented this functionalitly in order to give Safari Plus users an option to use it sandboxed without any security concerns.
 
 ### Profile Plist Structure
 
@@ -54,7 +54,7 @@ A condition is a dictionary with the following keys:
 
 ### Extension Format
 
-There is multiple types of extensions, essentially any sandbox extension supported by iOS can be included in a libSandy profile, the majority of types is never really used in iOS tho so the main useful ones are `file` and `mach`.
+There are multiple types of extensions, essentially any sandbox extension supported by iOS can be included in a libSandy profile, the majority of types is never really used in iOS tho so the main useful ones are `file` and `mach`.
 
 * `type`: String, type of the extension as explained above (`file` / `mach` / `generic` / `iokit_registry` / `iokit_user_client` / `posix_name`)
 
