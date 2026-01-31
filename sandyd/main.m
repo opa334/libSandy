@@ -65,13 +65,13 @@ NSString *issueExtension(NSDictionary *extensionDict, audit_token_t auditToken)
 		outToken = compat_sandbox_extension_issue_iokit_registry_entry_class_to_process(extensionClass.UTF8String, registryClass.UTF8String, 0, auditToken);
 	} else if ([typeOfExtension isEqualToString:@"iokit_user_client"]) {
 		NSString *registryEntryClass = extensionDict[@"registry_entry_class"];
-		outToken = sandbox_extension_issue_iokit_user_client_class(extensionClass.UTF8String, registryEntryClass.UTF8String, 0);
+		outToken = compat_sandbox_extension_issue_iokit_user_client_class(extensionClass.UTF8String, registryEntryClass.UTF8String, 0);
 	} else if ([typeOfExtension isEqualToString:@"mach"]) {
 		NSString *machName = extensionDict[@"mach_name"];
 		outToken = compat_sandbox_extension_issue_mach_to_process(extensionClass.UTF8String, machName.UTF8String, 0, auditToken);
 	} else if ([typeOfExtension isEqualToString:@"posix_ipc"]) {
 		NSString *posixName = extensionDict[@"posix_name"];
-		outToken = sandbox_extension_issue_posix_ipc(extensionClass.UTF8String, posixName.UTF8String, 0);
+		outToken = compat_sandbox_extension_issue_posix_ipc(extensionClass.UTF8String, posixName.UTF8String, 0);
 	} /*else if ([typeOfExtension isEqualToString:@"preference"]) {
 		NSString *preferenceDomain = extensionDict[@"preference_domain"];
 		outToken = compat_sandbox_extension_issue_preference(extensionClass.UTF8String, preferenceDomain.UTF8String, 0);

@@ -3,25 +3,32 @@
 #import <dlfcn.h>
 #import <Foundation/Foundation.h>
 
-char* (*__sandbox_extension_issue_file)(const char *extension_class, const char *path, uint32_t flags);
-char* (*__sandbox_extension_issue_file_to_process)(const char *extension_class, const char *path, uint32_t flags, audit_token_t);
+char* (*__sandbox_extension_issue_file)(const char *extension_class, const char *path, uint32_t flags) = NULL;
+char* (*__sandbox_extension_issue_file_to_process)(const char *extension_class, const char *path, uint32_t flags, audit_token_t) = NULL;
 
-char* (*__sandbox_extension_issue_generic)(const char *extension_class, uint32_t flags);
-char* (*__sandbox_extension_issue_generic_to_process)(const char *extension_class, uint32_t flags, audit_token_t);
+char* (*__sandbox_extension_issue_generic)(const char *extension_class, uint32_t flags) = NULL;
+char* (*__sandbox_extension_issue_generic_to_process)(const char *extension_class, uint32_t flags, audit_token_t) = NULL;
 
-char* (*__sandbox_extension_issue_iokit_registry_entry_class)(const char *extension_class, const char *registry_entry_class, uint32_t flags);
-char* (*__sandbox_extension_issue_iokit_registry_entry_class_to_process)(const char *extension_class, const char *registry_entry_class, uint32_t flags, audit_token_t);
+char* (*__sandbox_extension_issue_iokit_registry_entry_class)(const char *extension_class, const char *registry_entry_class, uint32_t flags) = NULL;
+char* (*__sandbox_extension_issue_iokit_registry_entry_class_to_process)(const char *extension_class, const char *registry_entry_class, uint32_t flags, audit_token_t) = NULL;
 
-char* (*__sandbox_extension_issue_mach)(const char *extension_class, const char *name, uint32_t flags);
-char* (*__sandbox_extension_issue_mach_to_process)(const char *extension_class, const char *name, uint32_t flags, audit_token_t);
+char* (*__sandbox_extension_issue_iokit_user_client_class)(const char *extension_class, const char *registry_entry_class, uint32_t flags) = NULL;
+
+char* (*__sandbox_extension_issue_mach)(const char *extension_class, const char *name, uint32_t flags) = NULL;
+char* (*__sandbox_extension_issue_mach_to_process)(const char *extension_class, const char *name, uint32_t flags, audit_token_t) = NULL;
+
+char* (*__sandbox_extension_issue_posix_ipc)(const char *extension_class, const char *name, uint32_t flags) = NULL;
 
 char* compat_sandbox_extension_issue_file_to_process(const char *extension_class, const char *path, uint32_t flags, audit_token_t audit_token)
 {
 	if(__sandbox_extension_issue_file_to_process) {
 		return __sandbox_extension_issue_file_to_process(extension_class, path, flags, audit_token);
 	}
-	else {
+	else if(__sandbox_extension_issue_file) {
 		return __sandbox_extension_issue_file(extension_class, path, flags);
+	}
+	else {
+		return NULL;
 	}
 }
 
@@ -30,8 +37,11 @@ char* compat_sandbox_extension_issue_generic_to_process(const char *extension_cl
 	if(__sandbox_extension_issue_generic_to_process) {
 		return __sandbox_extension_issue_generic_to_process(extension_class, flags, audit_token);
 	}
-	else {
+	else if(__sandbox_extension_issue_generic) {
 		return __sandbox_extension_issue_generic(extension_class, flags);
+	}
+	else {
+		return NULL;
 	}
 }
 
@@ -40,8 +50,21 @@ char* compat_sandbox_extension_issue_iokit_registry_entry_class_to_process(const
 	if(__sandbox_extension_issue_generic_to_process) {
 		return __sandbox_extension_issue_iokit_registry_entry_class_to_process(extension_class, registry_entry_class, flags, audit_token);
 	}
-	else {
+	else if(__sandbox_extension_issue_iokit_registry_entry_class) {
 		return __sandbox_extension_issue_iokit_registry_entry_class(extension_class, registry_entry_class, flags);
+	}
+	else {
+		return NULL;
+	}
+}
+
+char* compat_sandbox_extension_issue_iokit_user_client_class(const char *extension_class, const char *registry_entry_class, uint32_t flags)
+{
+	if(__sandbox_extension_issue_iokit_user_client_class) {
+		return __sandbox_extension_issue_iokit_user_client_class(extension_class, registry_entry_class, flags);
+	}
+	else {
+		return NULL;
 	}
 }
 
@@ -50,10 +73,24 @@ char* compat_sandbox_extension_issue_mach_to_process(const char *extension_class
 	if(__sandbox_extension_issue_mach_to_process) {
 		return __sandbox_extension_issue_mach_to_process(extension_class, name, flags, audit_token);
 	}
-	else {
+	else if(__sandbox_extension_issue_mach) {
 		return __sandbox_extension_issue_mach(extension_class, name, SANDBOX_EXTENSION_CANONICAL);
 	}
+	else {
+		return NULL;
+	}
 }
+
+char* compat_sandbox_extension_issue_posix_ipc(const char *extension_class, const char *name, uint32_t flags)
+{
+	if(__sandbox_extension_issue_posix_ipc) {
+		return __sandbox_extension_issue_posix_ipc(extension_class, name, flags);
+	}
+	else {
+		return NULL;
+	}
+}
+
 
 // this was an attempt at getting the system to issue preference domain extensions but it doesn't seem to work
 /*char* sandbox_extension_issue_custom(const char* class, uint32_t type, const char* data, uint32_t flags, int64_t pid, int64_t pidver)
@@ -90,9 +127,13 @@ void initSandboxCompatibilityLayer(void)
 	__sandbox_extension_issue_generic = dlsym(libSystemSandboxHandle, "sandbox_extension_issue_generic");
 	__sandbox_extension_issue_generic_to_process = dlsym(libSystemSandboxHandle, "sandbox_extension_issue_generic_to_process");
 
+	__sandbox_extension_issue_iokit_user_client_class = dlsym(libSystemSandboxHandle, "sandbox_extension_issue_iokit_user_client_class");
+
 	__sandbox_extension_issue_iokit_registry_entry_class = dlsym(libSystemSandboxHandle, "sandbox_extension_issue_iokit_registry_entry_class");
 	__sandbox_extension_issue_iokit_registry_entry_class_to_process = dlsym(libSystemSandboxHandle, "sandbox_extension_issue_iokit_registry_entry_class_to_process");
 
 	__sandbox_extension_issue_mach = dlsym(libSystemSandboxHandle, "sandbox_extension_issue_mach");
 	__sandbox_extension_issue_mach_to_process = dlsym(libSystemSandboxHandle, "sandbox_extension_issue_mach_to_process");
+
+	__sandbox_extension_issue_posix_ipc = dlsym(libSystemSandboxHandle, "sandbox_extension_issue_posix_ipc");
 }

@@ -99,11 +99,11 @@ char *sandbox_extension_issue_generic_to_process_by_pid(const char *extension_cl
 char *sandbox_extension_issue_iokit_registry_entry_class(const char *extension_class, const char *registry_entry_class, uint32_t flags);
 char *sandbox_extension_issue_iokit_registry_entry_class_to_process(const char *extension_class, const char *registry_entry_class, uint32_t flags, audit_token_t);
 char *sandbox_extension_issue_iokit_registry_entry_class_to_process_by_pid(const char *extension_class, const char *registry_entry_class, uint32_t flags, pid_t);
-char *sandbox_extension_issue_iokit_user_client_class(const char *extension_class, const char *registry_entry_class, uint32_t flags);
+char *sandbox_extension_issue_iokit_user_client_class(const char *extension_class, const char *registry_entry_class, uint32_t flags); // Removed in iOS 18.4
 char *sandbox_extension_issue_mach(const char *extension_class, const char *name, uint32_t flags);
 char *sandbox_extension_issue_mach_to_process(const char *extension_class, const char *name, uint32_t flags, audit_token_t);
 char *sandbox_extension_issue_mach_to_process_by_pid(const char *extension_class, const char *name, uint32_t flags, pid_t);
-char *sandbox_extension_issue_posix_ipc(const char *extension_class, const char *name, uint32_t flags);
+char *sandbox_extension_issue_posix_ipc(const char *extension_class, const char *name, uint32_t flags); // Removed in iOS 18.4
 
 void sandbox_extension_reap(void);
 int sandbox_extension_release(int64_t extension_handle);
