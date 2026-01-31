@@ -37,13 +37,19 @@ static BOOL consumeGlobalExtensions(void)
 	if (!sandydCommunicationWorks()) {
 		NSString *plistPath = JBROOT_PATH_NSSTRING(@"/usr/lib/sandyd_global.plist");
 		if (![[NSFileManager defaultManager] fileExistsAtPath:plistPath]) {
-			NSLog(@"[libSandy consumeGlobalExtensions] FATAL ERROR: /usr/lib/sandyd_global.plist does not exist");
+			NSLog(@"[libSandy consumeGlobalExtensions] FATAL ERROR: %@ does not exist", plistPath);
 			return NO;
 		}
 		NSDictionary *plistDict = [NSDictionary dictionaryWithContentsOfFile:plistPath];
-		if (!plistDict) return NO;
+		if (!plistDict) {
+			NSLog(@"[libSandy consumeGlobalExtensions] FATAL ERROR: Unable to read %@", plistPath);
+			return NO;
+		}
 		NSArray *extensions = plistDict[@"extensions"];
-		if (!extensions) return NO;
+		if (!extensions) {
+			NSLog(@"[libSandy consumeGlobalExtensions] FATAL ERROR: No extensions found in %@", plistPath);
+			return NO;
+		}
 		for (NSString *extension in extensions) {
 			__unused int cr = sandbox_extension_consume(extension.UTF8String);
 			HBLogDebugWeak(@"[libSandy consumeGlobalExtensions] sandbox_extension_consume(\"%s\") => %d", extension.UTF8String, cr);
