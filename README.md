@@ -78,7 +78,7 @@ In order to call these functions, you will have to run the `install_to_theos.sh`
 
 - `int libSandy_applyProfile(const char* profileName)`: attempts to apply a libSandy profile to the calling process. For return codes see [here](libSandy.h#L5).
 
-- `bool libSandy_works(void);`: checks if libSandy correctly works, do not bother calling this before libSandy_applyProfile as that will just return `kLibSandyErrorXPCFailure` when libSandy doesn't work. The reason for this functions existance is when you need to check whether libSandy works from a different process (In Crane many system daemons use libSandy to apply profiles but SpringBoard needs to know whether that worked, therefore it calls libSandy_works). When this returns false you can be almost sure that either libSandy is not compatible with the installed iOS version or that the user has disabled libSandySupport.dylib via Choicy, iCleaner Pro or similar.
+- `bool libSandy_works(void);`: checks if libSandy correctly works, do not bother calling this before libSandy_applyProfile as that will just return `kLibSandyErrorXPCFailure` when libSandy doesn't work. The reason for this functions existance is when you need to check whether libSandy works from a different process (In Crane many system daemons use libSandy to apply profiles but SpringBoard needs to know whether that worked, therefore it calls libSandy_works). When this returns false you can be almost sure that either libSandy is not compatible with the installed iOS version.
 
 ## Accessing Preferences
 
