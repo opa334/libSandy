@@ -9,6 +9,26 @@
 #import <sandbox_private.h>
 #import <sandyd.h>
 #import "sandbox_compat.h"
+#import "../libSandy_private.h"
+#import <substrate.h>
+
+int64_t (*_xpc_interface_routine)(int msgid, xpc_object_t xmsg, xpc_object_t *xreply, uint64_t a4, uint64_t a5);
+
+NSString *resolveCaller(xpc_object_t sourceConnection, audit_token_t *auditTokenOut)
+{
+	audit_token_t auditToken;
+	xpc_connection_get_audit_token(sourceConnection, &auditToken);
+	if (auditTokenOut) *auditTokenOut = auditToken;
+
+	struct __SecTask *secTask = SecTaskCreateWithAuditToken(NULL, auditToken);
+	if (!secTask) {
+		return nil;
+	}
+	NSString *callerIdentifier = (__bridge_transfer NSString *)SecTaskCopySigningIdentifier(secTask, NULL);
+	CFRelease(secTask);
+
+	return callerIdentifier;
+}
 
 void createExtensionPlist(void)
 {
@@ -86,48 +106,51 @@ NSString *issueExtension(NSDictionary *extensionDict, audit_token_t auditToken)
 	return nsOutToken;
 }
 
-xpc_object_t getProcessExtensions(xpc_connection_t sourceConnection, const char *profileName)
+bool isProfileAllowed(NSDictionary *profileDict, NSString *callerIdentifier)
 {
-	audit_token_t auditToken;
-	xpc_connection_get_audit_token(sourceConnection, &auditToken);
-	struct __SecTask *secTask = SecTaskCreateWithAuditToken(NULL, auditToken);
-	if (!secTask) {
-		HBLogDebugWeak(@"[libSandySupport getProcessExtensions] failed to create SecTask");
-		return xpc_array_create(NULL, 0);
-	}
+	NSArray *allowedProcesses = profileDict[@"AllowedProcesses"];
+	if (![allowedProcesses isKindOfClass:NSArray.class]) return false;
+	return [allowedProcesses containsObject:callerIdentifier] || [allowedProcesses containsObject:@"*"];
+}
 
-	NSString *sourceIdentifier = (__bridge_transfer NSString*)SecTaskCopySigningIdentifier(secTask, NULL);
-	CFRelease(secTask);
-	NSString *nsProfileName = [NSString stringWithUTF8String:profileName];
+bool areProfileConditionsMet(NSDictionary *profileDict)
+{
+	__block BOOL conditionsMet = YES;
+	NSArray *conditions = profileDict[@"Conditions"];
+	[conditions enumerateObjectsUsingBlock:^(NSDictionary *conditionDict, NSUInteger idx, BOOL *stop) {
+		BOOL conditionMet = evaluateCondition(conditionDict);
+		if (!conditionMet) {
+			conditionsMet = NO;
+			*stop = YES;
+		}
+	}];
+	return conditionsMet;
+}
 
-	HBLogDebugWeak(@"[libSandySupport getProcessExtensions] sourceIdentifier=%@ profileName=%@", sourceIdentifier, nsProfileName);
+xpc_object_t getProcessExtensions(NSString *callerIdentifier, audit_token_t auditToken, const char *profileName)
+{
+	HBLogDebugWeak(@"[libSandySupport getProcessExtensions] callerIdentifier=%@ profileName=%s", callerIdentifier, profileName);
 
 	__block xpc_object_t extensionArray = xpc_array_create(NULL, 0);
-	NSString *profileRootPath = JBROOT_PATH_NSSTRING(@"/Library/libSandy");
-	NSString *profilePath = [profileRootPath stringByAppendingPathComponent:[nsProfileName stringByAppendingPathExtension:@"plist"]].stringByStandardizingPath;
+	NSURL *profileRootURL = [NSURL fileURLWithPath:JBROOT_PATH_NSSTRING(@"/Library/libSandy") isDirectory:YES];
+	NSURL *profileURL = [NSURL fileURLWithPath:[[NSString stringWithUTF8String:profileName].lastPathComponent stringByAppendingString:@".plist"] isDirectory:NO relativeToURL:profileRootURL];
 
-	if (![profilePath hasPrefix:profileRootPath]) {
+	struct stat info;
+	stat(profileURL.path.fileSystemRepresentation, &info);
+	if (info.st_uid != 0 || info.st_gid != 0) {
 		// nice try ;-)
 		return extensionArray;
 	}
 
-	struct stat info;
-	stat(profilePath.fileSystemRepresentation, &info);
-	if (info.st_uid != 0 || info.st_gid != 0) {
-		// nice try² ;-)
+	HBLogDebugWeak(@"[libSandySupport getProcessExtensions] profileURL=%@", profileURL.path);
+
+	if (![profileURL checkResourceIsReachableAndReturnError:nil]) {
+		HBLogDebugWeak(@"[libSandySupport getProcessExtensions] profileURL () does not exist, rejecting...");
 		return extensionArray;
 	}
 
-	HBLogDebugWeak(@"[libSandySupport getProcessExtensions] profilePath=%@", profilePath);
-
-	if (![[NSFileManager defaultManager] fileExistsAtPath:profilePath]) {
-		HBLogDebugWeak(@"[libSandySupport getProcessExtensions] profilePath does not exists, rejecting...");
-	}
-
-	NSURL *profileURL = [NSURL fileURLWithPath:profilePath isDirectory:NO];
 	NSDictionary *profileDict;
 	NSError *readError = nil;
-
 	if (@available(iOS 11, *)) {
 		profileDict = [NSDictionary dictionaryWithContentsOfURL:profileURL error:&readError];
 	}
@@ -141,27 +164,15 @@ xpc_object_t getProcessExtensions(xpc_connection_t sourceConnection, const char 
 	}
 
 	// Verify if allowed
-	NSArray *allowedProcesses = profileDict[@"AllowedProcesses"];
-	if (![allowedProcesses isKindOfClass:NSArray.class]) return extensionArray;
-	BOOL allowed = [allowedProcesses containsObject:sourceIdentifier] || [allowedProcesses containsObject:@"*"];
-	if (!allowed) {
-		HBLogDebugWeak(@"[libSandySupport getProcessExtensions] process %@ is not allowed to apply profile (allowedProcesses: %@), rejecting...", sourceIdentifier, allowedProcesses);
+	if (!isProfileAllowed(profileDict, callerIdentifier)) {
+		HBLogDebugWeak(@"[libSandySupport getProcessExtensions] process %@ is not allowed to apply profile, rejecting...", callerIdentifier);
 		return extensionArray;
 	}
 
 	// Verify if all conditions are met
-	__block BOOL conditionsMet = YES;
-	NSArray *conditions = profileDict[@"Conditions"];
-	[conditions enumerateObjectsUsingBlock:^(NSDictionary *conditionDict, NSUInteger idx, BOOL *stop) {
-		BOOL conditionMet = evaluateCondition(conditionDict);
-		if (!conditionMet) {
-			conditionsMet = NO;
-			*stop = YES;
-		}
-	}];
-
-	if (!conditionsMet) {
+	if (!areProfileConditionsMet(profileDict)) {
 		HBLogDebugWeak(@"[libSandySupport getProcessExtensions] required conditions not met, rejecting...");
+		return extensionArray;
 	}
 	
 	// Load extensions
@@ -184,8 +195,54 @@ xpc_object_t getProcessExtensions(xpc_connection_t sourceConnection, const char 
 	return extensionArray;
 }
 
+NSArray *getActiveProfiles(NSString *callerIdentifier)
+{
+	NSMutableArray *profiles = [NSMutableArray new];
+
+	NSURL *profileRootURL = [NSURL fileURLWithPath:JBROOT_PATH_NSSTRING(@"/Library/libSandy") isDirectory:YES];
+	for (NSURL *profileURL in [[NSFileManager defaultManager] contentsOfDirectoryAtURL:profileRootURL includingPropertiesForKeys:nil options:0 error:nil]) {
+		NSDictionary *profileDict;
+		if (@available(iOS 11, *)) {
+			profileDict = [NSDictionary dictionaryWithContentsOfURL:profileURL error:nil];
+		}
+		else {
+			profileDict = [NSDictionary dictionaryWithContentsOfURL:profileURL];
+		}
+		if (!profileDict) continue;
+
+		if (isProfileAllowed(profileDict, callerIdentifier) && areProfileConditionsMet(profileDict)) {
+			[profiles addObject:profileDict];
+		}
+	}
+
+	if (profiles.count) return profiles;
+	return NULL;
+}
+
+bool isMachLookupAllowed(NSString *callerIdentifier, NSString *machIdentifier)
+{
+	for (NSDictionary *profile in getActiveProfiles(callerIdentifier)) {
+		NSArray *extensions = profile[@"Extensions"];
+		for (NSDictionary *extension in extensions) {
+			if (![extension isKindOfClass:[NSDictionary class]]) continue;
+			NSString *type = extension[@"type"];
+			if (![type isKindOfClass:[NSString class]]) continue;
+
+			if ([type isEqualToString:@"mach"]) {
+				NSString *machName = extension[@"mach_name"];
+				if (![machName isKindOfClass:[NSString class]]) continue;
+				if ([machName isEqualToString:machIdentifier]) return YES;
+			}
+		}
+	}
+	return NO;
+}
+
 int main(int argc, char *argv[], char *envp[]) {
 	@autoreleasepool {
+		MSImageRef xpcImage = MSGetImageByName("/usr/lib/system/libxpc.dylib");
+		_xpc_interface_routine = MSFindSymbol(xpcImage, "__xpc_interface_routine");
+
 		// Attempt to create the server, exit if fails
 		xpc_connection_t service = xpc_connection_create_mach_service("com.opa334.sandyd", NULL, XPC_CONNECTION_MACH_SERVICE_LISTENER);
 		if (!service) {
@@ -212,11 +269,51 @@ int main(int argc, char *argv[], char *envp[]) {
 							}
 							case SANDYD_MESSAGE_GET_PROFILE_EXTENSIONS: {
 								const char *profileName = xpc_dictionary_get_string(message, "profile");
-								xpc_object_t extensions = getProcessExtensions(connection, profileName);
-								xpc_object_t reply = xpc_dictionary_create_reply(message);
-								xpc_dictionary_set_value(reply, "extensions", extensions);
-								xpc_connection_send_message(connection, reply);
+								audit_token_t auditToken;
+								NSString *callerIdentifier = resolveCaller(connection, &auditToken);
+								if (callerIdentifier) {
+									xpc_object_t extensions = getProcessExtensions(callerIdentifier, auditToken, profileName);
+									xpc_object_t reply = xpc_dictionary_create_reply(message);
+									xpc_dictionary_set_value(reply, "extensions", extensions);
+									xpc_connection_send_message(connection, reply);
+								}
 								break;
+							}
+							case SANDYD_MESSAGE_CUSTOM_LOOKUP: {
+								if (kCFCoreFoundationVersionNumber >= kCFCoreFoundationVersionNumber_iOS_16_0) {
+									xpc_dictionary_set_value(message, "id", NULL);
+									const char *machName = xpc_dictionary_get_string(message, "name");
+									if (machName) {
+										NSString *callerIdentifier = resolveCaller(connection, NULL);
+										if (callerIdentifier) {
+											if (isMachLookupAllowed(callerIdentifier, [NSString stringWithUTF8String:machName])) {
+												xpc_object_t reply = NULL;
+												int msgid = xpc_dictionary_get_int64(message, "libsandy_msgid");
+
+												xpc_object_t messageToSend = xpc_dictionary_create(NULL, NULL, 0);
+												xpc_dictionary_apply(message, ^bool(const char *key, xpc_object_t xobj) {
+													if (!strcmp(key, "libsandy_msgid")) return true;
+													xpc_dictionary_set_value(messageToSend, key, xobj);
+													return true;
+												});
+
+												int r = _xpc_interface_routine(msgid, messageToSend, &reply, 1, 0);
+
+												xpc_object_t replyToSend = xpc_dictionary_create_reply(message);
+
+												if (r == 0) {
+													xpc_dictionary_apply(reply, ^bool(const char *key, xpc_object_t xobj){
+														xpc_dictionary_set_value(replyToSend, key, xobj);
+														return true;
+													});
+												}
+
+												xpc_connection_send_message(connection, replyToSend);
+											}
+										}
+									}
+									break;
+								}
 							}
 						}
 					}

@@ -18,4 +18,6 @@ fi
 
 launchctl unload $ROOT_PREFIX/Library/LaunchDaemons/com.opa334.sandyd.plist 2> /dev/null
 
+killall -9 securityd
+
 exit 0

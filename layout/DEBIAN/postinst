@@ -23,4 +23,6 @@ chmod 755 $ROOT_PREFIX/usr/local/libexec/sandyd
 
 launchctl load $ROOT_PREFIX/Library/LaunchDaemons/com.opa334.sandyd.plist 2> /dev/null
 
+killall -9 securityd
+
 exit 0

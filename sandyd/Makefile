@@ -4,7 +4,7 @@ TOOL_NAME = sandyd
 
 sandyd_ARCHS = arm64
 sandyd_FILES = main.m sandbox_compat.m
-sandyd_CFLAGS = -fobjc-arc -I../headers
+sandyd_CFLAGS = -fobjc-arc -I../headers -framework CydiaSubstrate
 ifneq ($(THEOS_PACKAGE_SCHEME),rootless)
 sandyd_CFLAGS += -D XINA_SUPPORT=1
 endif
