@@ -5,6 +5,7 @@
 #import <xpc/xpc.h>
 #import <libroot.h>
 #import <sandbox_private.h>
+#import <ptrauth.h>
 #import "../libSandy_private.h"
 
 int64_t (*_xpc_interface_routine)(int msgid, xpc_object_t xmsg, xpc_object_t *xreply, uint64_t a4, uint64_t a5);
@@ -84,7 +85,7 @@ void _xpc_connection_set_event_handler(xpc_connection_t connection, xpc_handler_
 {
 	if (kCFCoreFoundationVersionNumber >= kCFCoreFoundationVersionNumber_iOS_16_0) {
 		MSImageRef xpcImage = MSGetImageByName("/usr/lib/system/libxpc.dylib");
-		_xpc_interface_routine = MSFindSymbol(xpcImage, "__xpc_interface_routine");
+		_xpc_interface_routine = ptrauth_sign_unauthenticated(MSFindSymbol(xpcImage, "__xpc_interface_routine"), ptrauth_key_function_pointer, 0);
 		MSHookFunction((void *)&xpc_connection_set_event_handler, (void *)_xpc_connection_set_event_handler, (void **)&__xpc_connection_set_event_handler);
 	}
 }
