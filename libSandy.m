@@ -75,8 +75,8 @@ bool consumeSandydGlobalExtensions(void)
 			HBLogDebugWeak(@"[libSandy consumeSandydGlobalExtensions] sandbox_extension_consume(\"%s\") => %d", extension.UTF8String, cr);
 		}
 
-		if (kCFCoreFoundationVersionNumber < kCFCoreFoundationVersionNumber_iOS_16_0) return NO;
 		if (!sandydCommunicationWorks()) {
+			if (kCFCoreFoundationVersionNumber < kCFCoreFoundationVersionNumber_iOS_16_0) return NO;
 			NSLog(@"[libSandy consumeSandydGlobalExtensions] communication still does not work, even after consuming sandbox extensions, enabling redirection...");
 			enableMachRedirection();
 			return sandydCommunicationWorks();
