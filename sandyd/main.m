@@ -300,6 +300,7 @@ int main(int argc, char *argv[], char *envp[]) {
 												int r = _xpc_interface_routine(msgid, messageToSend, &reply, 1, 0);
 
 												xpc_object_t replyToSend = xpc_dictionary_create_reply(message);
+												xpc_dictionary_set_int64(replyToSend, "SandyProxy_XPCRetCode", r);
 
 												if (r == 0) {
 													xpc_dictionary_apply(reply, ^bool(const char *key, xpc_object_t xobj){
